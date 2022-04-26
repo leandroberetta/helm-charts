@@ -141,9 +141,9 @@ jobs:
         run: |
           git add Makefile
 
-          git commit -m "Release $RELEASING_VERSION"
+          git commit -m "Release $RELEASE_VERSION"
           
-          git push origin $(git rev-parse HEAD):refs/tags/$RELEASING_VERSION-master
+          git push origin $(git rev-parse HEAD):refs/tags/$RELEASE_VERSION-master
     
       - name: Publish Helm charts
         env:
