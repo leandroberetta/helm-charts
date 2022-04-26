@@ -29,6 +29,7 @@ jobs:
     outputs:      
       release_version: ${{ steps.release_version.outputs.release_version }}      
       next_version: ${{ steps.next_version.outputs.next_version }}
+      branch_version: ${{ steps.branch_version.outputs.branch_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
