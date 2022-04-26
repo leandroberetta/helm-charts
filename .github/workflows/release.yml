@@ -59,6 +59,7 @@ jobs:
           elif [[ $RELEASE_TYPE == "minor" ]]
           then 
               NEXT_VERSION=v$(./.github/workflows/util/semver bump minor $CURRENT_VERSION)          
+          fi
 
           echo "::set-output name=releasing_version::$NEXT_VERSION"
               
