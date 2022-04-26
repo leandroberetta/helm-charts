@@ -16,7 +16,7 @@ on:
         required: true
         default: leandroberetta/helm-charts
         type: string
-      releasing_branch:
+      release_branch:
         description: Branch to release
         required: true
         default: master
@@ -38,42 +38,58 @@ jobs:
           repository: ${{ github.event.inputs.repository }}
           ref: ${{ github.event.inputs.releasing_branch }}       
       
-      - name: Determine current version
-        id: current_version
+      - name: Determine release version
+        id: release_version
         run: |
           RAW_VERSION=$(sed -rn 's/^VERSION \?= v(.*)/\1/p' Makefile)
           
           # Remove any pre release identifier (ie: "-SNAPSHOT")
-          VERSION=$(./.github/workflows/util/semver bump release $RAW_VERSION)
+          RELEASE_VERSION=$(./.github/workflows/util/semver bump release $RAW_VERSION)
           
-          echo "::set-output name=current_version::$VERSION"      
-      - name: Determine releasing version
+          echo "::set-output name=release_version::$RELEASE_VERSION"      
+      - name: Determine next version
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
-          CURRENT_VERSION: ${{ steps.current_version.outputs.current_version }}
-        id: releasing_version
-        run: echo "::set-output name=releasing_version::$(./.github/workflows/util/releasing_version.sh)"
-      
-      - name: Determine version branch
-        id: version_branch
-        run: |
-          VERSION="v${{ steps.current_version.outputs.current_version }}"
-          
-          # Drop the patch part of the version (".z")
-          VERSION_WITHOUT_PATCH=$(echo $VERSION | sed 's/\.[0-9]*\+$//')
-          
-          echo "::set-output name=version_branch::$VERSION_WITHOUT_PATCH"
-      
-      - name: Determine next version
+          RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
         id: next_version
-        run: echo "::set-output name=next_version::$(./.github/workflows/util/semver bump minor ${{ steps.current_version.outputs.current_version }})"
-      
-      - name: Log information
         run: |
-          echo "Build version: ${{ steps.current_version.outputs.current_version }}"
-          
-          echo "Releasing version: ${{ steps.releasing_version.outputs.releasing_version }}"
-          
-          echo "Branch version: ${{ steps.version_branch.outputs.version_branch }}"
-          
+          if [[ $RELEASE_TYPE == "patch" ]]
+          then
+              NEXT_VERSION=v$(./.github/workflows/util/semver bump $RELEASE_TYPE $CURRENT_VERSION)
+          elif [[ $RELEASE_TYPE == "minor" ]]
+          then 
+              NEXT_VERSION=v$(./.github/workflows/util/semver bump minor $CURRENT_VERSION)          
+
+          echo "::set-output name=releasing_version::$NEXT_VERSION"
+              
+      - name: Log information
+        run: |         
+          echo "Release version: ${{ steps.release_version.outputs.release_version }}"
+                   
           echo "Next version: ${{ steps.next_version.outputs.next_version }}"
+
+  release:
+    name: Release
+    runs-on: ubuntu-20.04
+    needs: [initialize, build_backend, build_frontend, integration_tests_backend, integration_tests_frontend]
+    env:
+      RELEASE_TYPE: ${{ needs.initialize.outputs.release_type }}      
+      RELEASE_VERSION: ${{ needs.initialize.outputs.release_version }}
+      NEXT_VERSION: ${{ needs.initialize.outputs.next_version }}      
+      RELEASE_BRANCH: ${{ github.event.inputs.release_branch }}
+      GH_PULL_URI: https://api.github.com/repos/${{ github.event.inputs.repository }}/pulls
+      Gh_RELEASE_URI: https://api.github.com/repos/${{ github.event.inputs.repository }}/releases
+    steps:    
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.inputs.repository }}
+          ref: ${{ github.event.inputs.releasing_branch }} 
+        
+      - name: Configure git
+        run: |
+          git config user.email 'lea.beretta@gmail.com'
+        
+          git config user.name 'leandroberetta'
+ 
+      
