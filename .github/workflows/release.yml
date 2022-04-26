@@ -46,6 +46,11 @@ jobs:
           # Remove any pre release identifier (ie: "-SNAPSHOT")
           RELEASE_VERSION=$(./.github/workflows/util/semver bump release $RAW_VERSION)
           
+          if [[ $RELEASE_TYPE == "patch" ]]
+          then
+              RELEASE_VERSION=v$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
+          fi
+
           echo "::set-output name=release_version::$RELEASE_VERSION"      
       - name: Determine next version
         env:
@@ -55,10 +60,10 @@ jobs:
         run: |
           if [[ $RELEASE_TYPE == "patch" ]]
           then
-              NEXT_VERSION=v$(./.github/workflows/util/semver bump $RELEASE_TYPE $CURRENT_VERSION)
+              NEXT_VERSION=v$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
           elif [[ $RELEASE_TYPE == "minor" ]]
           then 
-              NEXT_VERSION=v$(./.github/workflows/util/semver bump minor $CURRENT_VERSION)          
+              NEXT_VERSION=v$(./.github/workflows/util/semver bump minor $RELEASE_VERSION)          
           fi
 
           echo "::set-output name=releasing_version::$NEXT_VERSION"
