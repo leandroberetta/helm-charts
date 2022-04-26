@@ -39,6 +39,8 @@ jobs:
           ref: ${{ github.event.inputs.releasing_branch }}       
       
       - name: Determine release version
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
         id: release_version
         run: |
           RAW_VERSION=$(sed -rn 's/^VERSION \?= v(.*)/\1/p' Makefile)
