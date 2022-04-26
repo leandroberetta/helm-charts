@@ -79,7 +79,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}      
         id: branch_version
-        run: echo "::set-output name=branch_version::v$(echo $RELEASE_VERSION | sed 's/\.[0-9]*\+$//')"      
+        run: echo "::set-output name=branch_version::$(echo $RELEASE_VERSION | sed 's/\.[0-9]*\+$//')"      
 
       - name: Log information
         run: |         
