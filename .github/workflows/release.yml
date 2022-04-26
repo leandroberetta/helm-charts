@@ -49,6 +49,7 @@ jobs:
           if [[ $RELEASE_TYPE == "patch" ]]
           then
               RELEASE_VERSION=$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
+              echo $RELEASE_VERSION
           fi
 
           echo "::set-output name=release_version::v$RELEASE_VERSION"      
