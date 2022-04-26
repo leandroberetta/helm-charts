@@ -71,7 +71,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-20.04
-    needs: [initialize, build_backend, build_frontend, integration_tests_backend, integration_tests_frontend]
+    needs: [initialize]
     env:
       RELEASE_TYPE: ${{ needs.initialize.outputs.release_type }}      
       RELEASE_VERSION: ${{ needs.initialize.outputs.release_version }}
