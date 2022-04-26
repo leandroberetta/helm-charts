@@ -129,7 +129,7 @@ jobs:
       # would break the next minor build (remember we have already switched to master).
       - name: Prepare Makefile
         if: ${{ needs.initialize.outputs.release_version != 'patch'}}
-        run: sed -i -r 's/^VERSION \\?= v.*/VERSION \\?= v$RELEASE_VERSION/' Makefile
+        run: sed -i -r 's/^VERSION \?= v.*/VERSION \?= v$RELEASE_VERSION/' Makefile
 
       - name: Update Helm repositories
         run: make -e VERSION=$RELEASE_VERSION update-helm-repos
