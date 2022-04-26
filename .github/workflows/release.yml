@@ -26,7 +26,7 @@ jobs:
   initialize:
     name: Initialize
     runs-on: ubuntu-20.04
-    outputs:      
+    outputs:            
       release_version: ${{ steps.release_version.outputs.release_version }}      
       next_version: ${{ steps.next_version.outputs.next_version }}
       branch_version: ${{ steps.branch_version.outputs.branch_version }}
@@ -120,7 +120,7 @@ jobs:
 
       # Switch to `master` branch before updating docs/index.yaml
       - name: Checkout master
-        if: ${{ needs.initialize.outputs.release_type == 'patch'}}
+        if: ${{ github.event.inputs.release_type == 'patch'}}
         run: git checkout master
       
       # Anticipated preparation of Makefile so that it contains the released
@@ -129,7 +129,7 @@ jobs:
       # This change to the Makefile is not done for patch releases, because that
       # would break the next minor build (remember we have already switched to master).
       - name: Prepare Makefile
-        if: ${{ needs.initialize.outputs.release_type != 'patch'}}
+        if: ${{ github.event.inputs.release_type != 'patch'}}
         run: sed -i -r 's/^VERSION \?= v.*/VERSION \?= v$RELEASE_VERSION/' Makefile
 
       - name: Update Helm repositories
