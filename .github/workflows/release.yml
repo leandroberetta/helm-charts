@@ -168,7 +168,7 @@ jobs:
 
             curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d "{\"title\": \"Prepare for next version\", \"body\": \"Please, merge to update version numbers and prepare for release $NEXT_VERSION.\", \"head\": \"leandroberetta:$BUILD_TAG}\", \"base\": \"master\"}" \
+              -d "{\"title\": \"Prepare for next version\", \"body\": \"Please, merge to update version numbers and prepare for release $NEXT_VERSION.\", \"head\": \"leandroberetta:$BUILD_TAG\", \"base\": \"master\"}" \
               -X POST $GH_PULL_URI
             
           # For a patch release, everything is ready to publish the generated charts.
@@ -177,7 +177,7 @@ jobs:
           then 
             curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d "{\"title\": \"Prepare for next version\", \"body\": \"Please, merge to update version numbers and prepare for release $NEXT_VERSION.\", \"head\": \"leandroberetta:$BUILD_TAG}\", \"base\": \"master\"}" \
+              -d "{\"title\": \"Prepare for next version\", \"body\": \"Please, merge to update version numbers and prepare for release $NEXT_VERSION.\", \"head\": \"leandroberetta:$BUILD_TAG\", \"base\": \"master\"}" \
               -X POST $GH_PULL_URI
                         
             # We did a patch release. In this case we need to go back to the version branch and do changes 
