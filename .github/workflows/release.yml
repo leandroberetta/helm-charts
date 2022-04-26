@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'     
+        required: true
+        default: 'auto' 
+        type: choice
+        options:
+          - minor
+          - patch 
+      repository:
+        description: Repository (in owner/repo format)
+        required: true
+        default: leandroberetta/helm-charts
+        type: string
+      releasing_branch:
+        description: Branch to release
+        required: true
+        default: master
+        type: string
+  
+jobs:
+  initialize:
+    name: Initialize
+    runs-on: ubuntu-20.04
+    outputs:
+      current_version: ${{ steps.current_version.outputs.current_version }}
+      releasing_version: ${{ steps.releasing_version.outputs.releasing_version }}
+      branch_version: v${{ steps.version_branch.outputs.version_branch }}
+      next_version: ${{ steps.next_version.outputs.next_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.inputs.repository }}
+          ref: ${{ github.event.inputs.releasing_branch }}       
+      
+      - name: Determine current version
+        id: current_version
+        run: |
+          RAW_VERSION=$(sed -rn 's/^VERSION \?= v(.*)/\1/p' Makefile)
+          
+          # Remove any pre release identifier (ie: "-SNAPSHOT")
+          VERSION=$(./.github/workflows/util/semver bump release $RAW_VERSION)
+          
+          echo "::set-output name=current_version::$VERSION"      
+      - name: Determine releasing version
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          CURRENT_VERSION: ${{ steps.current_version.outputs.current_version }}
+        id: releasing_version
+        run: echo "::set-output name=releasing_version::$(./.github/workflows/util/releasing_version.sh)"
+      
+      - name: Determine version branch
+        id: version_branch
+        run: |
+          VERSION="v${{ steps.current_version.outputs.current_version }}"
+          
+          # Drop the patch part of the version (".z")
+          VERSION_WITHOUT_PATCH=$(echo $VERSION | sed 's/\.[0-9]*\+$//')
+          
+          echo "::set-output name=version_branch::$VERSION_WITHOUT_PATCH"
+      
+      - name: Determine next version
+        id: next_version
+        run: echo "::set-output name=next_version::$(./.github/workflows/util/semver bump minor ${{ steps.current_version.outputs.current_version }})"
+      
+      - name: Log information
+        run: |
+          echo "Build version: ${{ steps.current_version.outputs.current_version }}"
+          
+          echo "Releasing version: ${{ steps.releasing_version.outputs.releasing_version }}"
+          
+          echo "Branch version: ${{ steps.version_branch.outputs.version_branch }}"
+          
+          echo "Next version: ${{ steps.next_version.outputs.next_version }}"
