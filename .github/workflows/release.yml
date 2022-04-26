@@ -166,6 +166,7 @@ jobs:
             
             git commit -m "Prepare for next version"
 
+            echo "{\"title\": \"Prepare for next version\", \"body\": \"Please, merge to update version numbers and prepare for release $NEXT_VERSION.\", \"head\": \"leandroberetta:$BUILD_TAG\", \"base\": \"master\"}"
             curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
               -H "Content-Type: application/json" \
               -d "{\"title\": \"Prepare for next version\", \"body\": \"Please, merge to update version numbers and prepare for release $NEXT_VERSION.\", \"head\": \"leandroberetta:$BUILD_TAG\", \"base\": \"master\"}" \
