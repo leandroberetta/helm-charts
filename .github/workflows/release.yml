@@ -48,16 +48,19 @@ jobs:
           
           if [[ $RELEASE_TYPE == "patch" ]]
           then
-              RELEASE_VERSION=v$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
+              RELEASE_VERSION=$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
           fi
 
-          echo "::set-output name=release_version::$RELEASE_VERSION"      
+          echo "::set-output name=release_version::v$RELEASE_VERSION"      
       - name: Determine next version
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
         id: next_version
         run: |
+          # Drop the version prefix ("v")
+          RELEASE_VERSION=${RELEASE_VERSION:1}
+
           if [[ $RELEASE_TYPE == "patch" ]]
           then
               NEXT_VERSION=v$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
