@@ -26,10 +26,8 @@ jobs:
   initialize:
     name: Initialize
     runs-on: ubuntu-20.04
-    outputs:
-      current_version: ${{ steps.current_version.outputs.current_version }}
-      releasing_version: ${{ steps.releasing_version.outputs.releasing_version }}
-      branch_version: v${{ steps.version_branch.outputs.version_branch }}
+    outputs:      
+      release_version: ${{ steps.release_version.outputs.release_version }}      
       next_version: ${{ steps.next_version.outputs.next_version }}
     steps:
       - name: Checkout code
@@ -48,13 +46,16 @@ jobs:
           # Remove any pre release identifier (ie: "-SNAPSHOT")
           RELEASE_VERSION=$(./.github/workflows/util/semver bump release $RAW_VERSION)
           
+          # If we are doing a patch release, the Makefile contains a version that is already released.
+          # The version present in the Makefile needs to be bumped and that's our releasing version.
+          # The next version is two patches from whatever is present in the Makefile.          
           if [[ $RELEASE_TYPE == "patch" ]]
           then
-              RELEASE_VERSION=$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)
-              echo $RELEASE_VERSION
+              RELEASE_VERSION=$(./.github/workflows/util/semver bump $RELEASE_TYPE $RELEASE_VERSION)              
           fi
 
           echo "::set-output name=release_version::v$RELEASE_VERSION"      
+      
       - name: Determine next version
         env:
           RELEASE_TYPE: ${{ github.event.inputs.release_type }}
@@ -73,35 +74,142 @@ jobs:
           fi
 
           echo "::set-output name=next_version::$NEXT_VERSION"
-              
+
+      - name: Determine branch version
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}      
+        id: branch_version
+        run: echo "::set-output name=branch_version::v$(echo $RELEASE_VERSION | sed 's/\.[0-9]*\+$//')"      
+
       - name: Log information
         run: |         
           echo "Release version: ${{ steps.release_version.outputs.release_version }}"
                    
           echo "Next version: ${{ steps.next_version.outputs.next_version }}"
 
-  release:
-    name: Release
-    runs-on: ubuntu-20.04
-    needs: [initialize]
-    env:
-      RELEASE_TYPE: ${{ needs.initialize.outputs.release_type }}      
-      RELEASE_VERSION: ${{ needs.initialize.outputs.release_version }}
-      NEXT_VERSION: ${{ needs.initialize.outputs.next_version }}      
-      RELEASE_BRANCH: ${{ github.event.inputs.release_branch }}
-      GH_PULL_URI: https://api.github.com/repos/${{ github.event.inputs.repository }}/pulls
-      Gh_RELEASE_URI: https://api.github.com/repos/${{ github.event.inputs.repository }}/releases
-    steps:    
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ github.event.inputs.repository }}
-          ref: ${{ github.event.inputs.releasing_branch }} 
+          echo "Branch version: ${{ steps.branch_version.outputs.branch_version }}"
+
+  # release:
+  #   name: Release
+  #   runs-on: ubuntu-20.04
+  #   needs: [initialize]
+  #   env:
+  #     RELEASE_TYPE: ${{ needs.initialize.outputs.release_type }}      
+  #     RELEASE_VERSION: ${{ needs.initialize.outputs.release_version }}
+  #     NEXT_VERSION: ${{ needs.initialize.outputs.next_version }}
+  #     BRANCH_VERSION: ${{ needs.initialize.outputs.branch_version }}
+  #     RELEASE_BRANCH: ${{ github.event.inputs.release_branch }}
+  #     GH_PULL_URI: https://api.github.com/repos/${{ github.event.inputs.repository }}/pulls
+  #     Gh_RELEASE_URI: https://api.github.com/repos/${{ github.event.inputs.repository }}/releases
+  #   steps:    
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #       with:
+  #         repository: ${{ github.event.inputs.repository }}
+  #         ref: ${{ github.event.inputs.releasing_branch }} 
         
-      - name: Configure git
-        run: |
-          git config user.email 'lea.beretta@gmail.com'
+  #     - name: Configure git
+  #       run: |
+  #         git config user.email 'lea.beretta@gmail.com'
         
-          git config user.name 'leandroberetta'
+  #         git config user.name 'leandroberetta'
  
+  #     - name: Build Helm charts
+  #       run: make -e VERSION=$RELEASE_VERSION clean build-helm-charts
+
+  #     # Switch to `master` branch before updating docs/index.yaml
+  #     - name: Checkout master
+  #       if: ${{ needs.initialize.outputs.release_version == "patch"}}
+  #       run: git checkout master
       
+  #     # Anticipated preparation of Makefile so that it contains the released
+  #     # version when creating the git tag.
+  #     #
+  #     # This change to the Makefile is not done for patch releases, because that
+  #     # would break the next minor build (remember we have already switched to master).
+  #     - name: Prepare Makefile
+  #       if: ${{ needs.initialize.outputs.release_version != "patch"}}
+  #       run: sed -i -r 's/^VERSION \\?= v.*/VERSION \\?= v$RELEASE_VERSION/' Makefile
+
+  #     - name: Update Helm repositories
+  #       run: make -e VERSION=$RELEASE_VERSION update-helm-repos
+
+  #     # Tag the release from sources in the master branch
+  #     # Note that if we are doing a patch release, this tag won't contain valid `kiali-server` nor `kiali-operator` directories
+  #     # because these directories come from `master` rather than the original ones.
+  #     - name: Create tag
+  #       run: |
+  #         git add Makefile
+
+  #         git commit -m "Release $RELEASING_VERSION"
+          
+  #         git push origin $(git rev-parse HEAD):refs/tags/$RELEASING_VERSION-master
+    
+  #     - name: Publish Helm charts
+  #       env:
+  #         BUILD_TAG: helm-charts-release-${{ github.run_number }}-main
+  #       run: |
+  #         # If we did a minor release, we need to create the vX.Y branch, so that it can
+  #         # be used as a base for a patch release.
+  #         # Also, we create a vX.Y.Z tag.
+  #         if [[ $RELEASE_TYPE == "minor" ]]
+  #         then
+  #           git push origin $(git rev-parse HEAD):refs/heads/$BRANCH_VERSION
+            
+  #           git push origin $(git rev-parse HEAD):refs/tags/$RELEASE_VERSION
+          
+  #           # Bump version stored in the Makefile
+  #           sed -i -r "s/^VERSION \\?= (.*)/VERSION \\?= v$NEXT_VERSION-SNAPSHOT/" Makefile
+
+  #           git add Makefile
+            
+  #           git commit -m "Prepare for next version"
+
+  #            # First, try to push directly to master
+  #           git push origin $(git rev-parse HEAD):refs/heads/master || touch pr_needed.txt
+
+  #            # If push to master fails, create a PR
+  #           [ ! -f pr_needed.txt ] || git push origin $(git rev-parse HEAD):refs/heads/$BUILD_TAG
+
+  #           [ ! -f pr_needed.txt ] || echo "Creating PR to prepare for next version..."
+
+  #           [ ! -f pr_needed.txt ] || curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+  #             -H "Content-Type: application/json" \
+  #             -d '{"title": "Prepare for next version", "body": "I could not update master branch. Please, merge.", "head": "kiali-bot:$BUILD_TAG}", "base": "master"}' \
+  #             -X POST $GH_PULL_URI
+            
+  #           rm -f pr_needed.txt
+
+  #         # For a patch release, everything is ready to publish the generated charts.
+  #         # Let's push to master
+  #         elif [[ $RELEASE_TYPE == "patch" ]]
+  #         then 
+  #           git push origin $(git rev-parse HEAD):refs/heads/master || touch pr_needed.txt
+
+  #           [ ! -f pr_needed.txt ] || git push origin $(git rev-parse HEAD):refs/heads/$BUILD_TAG
+
+  #           [ ! -f pr_needed.txt ] || echo "Creating PR to prepare for next version..."
+
+  #           [ ! -f pr_needed.txt ] || curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+  #             -H "Content-Type: application/json" \
+  #             -d '{"title": "Prepare for next version", "body": "I could not update master branch. Please, merge.", "head": "kiali-bot:$BUILD_TAG}", "base": "master"}' \
+  #             -X POST $GH_PULL_URI
+            
+  #           rm -f pr_needed.txt
+
+  #           # We did a patch release. In this case we need to go back to the version branch and do changes 
+  #           # to the Makefile in that branch to record what's the current path release. Then, commit and push.
+  #           # Also, a vX.Y.Z branch is created
+  #           git checkout $RELEASE_BRANCH
+            
+  #           sed -i -r "s/^VERSION \\?= (.*)/VERSION \\?= $RELEASE_VERSION/" Makefile
+            
+  #           git add Makefile
+            
+  #           git commit -m "Record that $RELEASE_VERSION was released, in preparation for next patch version."
+            
+  #           git push origin $(git rev-parse HEAD):$RELEASE_BRANCH
+            
+  #           git push origin $(git rev-parse HEAD):refs/tags/$RELEASE_VERSION
+
+  #         fi
